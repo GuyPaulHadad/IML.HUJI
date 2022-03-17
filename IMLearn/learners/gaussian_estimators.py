@@ -1,12 +1,18 @@
 from __future__ import annotations
+
+import math
+
 import numpy as np
 from numpy.linalg import inv, det, slogdet
+import plotly.express as px
+from plotly import graph_objects as go
 
 
 class UnivariateGaussian:
     """
     Class for univariate Gaussian Distribution Estimator
     """
+
     def __init__(self, biased_var: bool = False) -> UnivariateGaussian:
         """
         Estimator for univariate Gaussian mean and variance parameters
@@ -51,8 +57,9 @@ class UnivariateGaussian:
         Sets `self.mu_`, `self.var_` attributes according to calculated estimation (where
         estimator is either biased or unbiased). Then sets `self.fitted_` attribute to `True`
         """
-        raise NotImplementedError()
 
+        self.mu_ = np.mean(X)
+        self.var_ = np.var(X)
         self.fitted_ = True
         return self
 
@@ -76,7 +83,26 @@ class UnivariateGaussian:
         """
         if not self.fitted_:
             raise ValueError("Estimator must first be fitted before calling `pdf` function")
-        raise NotImplementedError()
+        pdf_array = np.empty(1000)
+        for index in range(X.size):
+            pdf_array[index] = self.normal_pdf(self.mu_, self.var_, X[index])
+
+        return pdf_array
+
+    @staticmethod
+    def general_pdf(X: np.ndarray) -> np.ndarray:
+        mu = np.mean(X)
+        var = np.var(X)
+        pdf_array = np.empty(1000)
+        for index in range(X.size):
+            pdf_array[index] = UnivariateGaussian.normal_pdf(mu, var, X[index])
+
+        return pdf_array
+
+    @staticmethod
+    def normal_pdf(mu: float, var: float, value: float) -> float:
+        sd = math.sqrt(var)
+        return (1.0 / (sd * math.sqrt(2 * math.pi))) * math.exp(-0.5 * ((value - mu) / sd) ** 2)
 
     @staticmethod
     def log_likelihood(mu: float, sigma: float, X: np.ndarray) -> float:
@@ -104,6 +130,7 @@ class MultivariateGaussian:
     """
     Class for multivariate Gaussian Distribution Estimator
     """
+
     def __init__(self):
         """
         Initialize an instance of multivariate Gaussian estimator
@@ -144,7 +171,8 @@ class MultivariateGaussian:
         Then sets `self.fitted_` attribute to `True`
         """
         raise NotImplementedError()
-
+        self.mu_ = np.mean(X)
+        self.cov_ = np.var(X)
         self.fitted_ = True
         return self
 
@@ -190,3 +218,52 @@ class MultivariateGaussian:
             log-likelihood calculated
         """
         raise NotImplementedError()
+
+
+if __name__ == '__main__':
+    normal1 = UnivariateGaussian();
+    print(str(normal1.mu_) + " " + str(normal1.var_))
+    numpyArr = np.random.normal(10, 1, 1000)
+    normal1.fit(numpyArr)
+    print("Estimated mu: " + str(normal1.mu_) + " | Estimated cov: " + str(normal1.var_))
+    # normal1.pdf(normal1)
+    print(numpyArr.size)
+    ms = np.linspace(5, numpyArr.size, round(numpyArr.size / 5)).astype(np.int)
+    absolute_mean_error = []
+
+    for m in ms:
+        absolute_mean_error.append(abs(normal1.mu_ - np.mean(numpyArr[1:m + 1])))
+
+    go.Figure([go.Scatter(x=ms, y=absolute_mean_error, mode='markers+lines', name=r"text{$\mu-error$}"),
+               go.Scatter(x=ms, y=[0] * len(ms), mode='lines', name=r"$no-error$")],
+              layout=go.Layout(title=r"$\text{Absolute Mean Error as a Function of Number of Samples}$",
+                               xaxis_title="$m\\text{ - number of samples}$",
+                               yaxis_title="r$\\text{Absolute Mean Error}$",
+                               height=400)).show()
+    pdf_array = normal1.pdf(numpyArr)
+    empirical_pdf = np.full(1000, 1 / 1000)
+
+    go.Figure(
+        [go.Scatter(x=numpyArr, y=pdf_array, mode='markers')],
+        layout=go.Layout(
+            title=r"$" + "\\text{Density Function of a normal distribution: }" + "\mu=" + "{:.2f}".format(
+                normal1.mu_) + ", \sigma^2=" + "{:.2f}".format(normal1.var_) + "$",
+            xaxis_title="$X$",
+            yaxis_title="r$\\text{Probability Density}$",
+            height=400)).show()
+"""
+    X = np.linspace(6, 14, numpyArr.size).astype(np.int)
+    theoretical_dist_m = UnivariateGaussian.general_pdf(X)
+
+    go.Figure([go.Histogram(x=numpyArr, opacity=0.75, bingroup=1, histnorm='probability density',
+                            marker_color="rgb(0,124,134)", name=r'$\hat\mu$'),
+
+               go.Scatter(x=X, y=theoretical_dist_m, mode='lines', line=dict(width=4, color="rgb(204,68,83)"),
+                          name=r'$N(\mu, \frac{\sigma^2}{m1})$')],
+              layout=go.Layout(barmode='overlay',
+                               title=r"$\text{(8) Mean estimator distribution}$",
+                               xaxis_title="r$\hat\mu$",
+                               yaxis_title="density",
+                               height=300)).show()
+
+"""
