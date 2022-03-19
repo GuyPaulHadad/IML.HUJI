@@ -3,7 +3,10 @@ from __future__ import annotations
 import math
 
 import numpy as np
+import scipy
 from numpy.linalg import inv, det, slogdet
+from scipy.stats import *
+
 import plotly.express as px
 from plotly import graph_objects as go
 
@@ -83,21 +86,8 @@ class UnivariateGaussian:
         """
         if not self.fitted_:
             raise ValueError("Estimator must first be fitted before calling `pdf` function")
-        pdf_array = np.empty(1000)
-        for index in range(X.size):
-            pdf_array[index] = self.normal_pdf(self.mu_, self.var_, X[index])
-
-        return pdf_array
-
-    @staticmethod
-    def general_pdf(X: np.ndarray) -> np.ndarray:
-        mu = np.mean(X)
-        var = np.var(X)
-        pdf_array = np.empty(1000)
-        for index in range(X.size):
-            pdf_array[index] = UnivariateGaussian.normal_pdf(mu, var, X[index])
-
-        return pdf_array
+        sd = math.sqrt(self.var_)
+        return (1.0 / (sd * math.sqrt(2 * math.pi))) * np.exp(-0.5 * ((X - self.mu_) / sd) ** 2)
 
     @staticmethod
     def normal_pdf(mu: float, var: float, value: float) -> float:
@@ -123,7 +113,15 @@ class UnivariateGaussian:
         log_likelihood: float
             log-likelihood calculated
         """
-        raise NotImplementedError()
+
+        # n*log(1/(sqrt(2*pi)*sigma)) + sum(-0.5*((sample - mu)/sigma)^2)
+        # log in base of e. mu - expectation. sigma - standard deviation
+
+        sample_amount = X.size
+        sum_of_normal_exp_power = 0
+        for i in range(sample_amount):
+            sum_of_normal_exp_power = sum_of_normal_exp_power - 0.5 * ((X[i] - mu) / sigma) ** 2
+        return sample_amount * math.log((1.0 / (sigma * math.sqrt(2 * math.pi))), math.e) + sum_of_normal_exp_power
 
 
 class MultivariateGaussian:
@@ -170,9 +168,8 @@ class MultivariateGaussian:
         Sets `self.mu_`, `self.cov_` attributes according to calculated estimation.
         Then sets `self.fitted_` attribute to `True`
         """
-        raise NotImplementedError()
-        self.mu_ = np.mean(X)
-        self.cov_ = np.var(X)
+        self.mu_ = X.mean(0)
+        self.cov_ = np.cov(X, rowvar=False)
         self.fitted_ = True
         return self
 
@@ -194,9 +191,23 @@ class MultivariateGaussian:
         ------
         ValueError: In case function was called prior fitting the model
         """
+
         if not self.fitted_:
             raise ValueError("Estimator must first be fitted before calling `pdf` function")
-        raise NotImplementedError()
+
+        size = self.mu_.size
+        deter = det(self.cov_)
+        if deter != 0:
+            norm_const = 1.0 / (math.pow((2 * math.pi), float(size) / 2) * math.pow(deter, 1.0 / 2))
+            x_mu = (X - self.mu_)
+            inverse = inv(self.cov_)
+            product_arr = np.einsum('ij,jk,ki->i', x_mu, inverse, x_mu.T)
+            print(product_arr)
+            print(np.dot(x_mu,inverse*x_mu.T))
+            result = np.exp(-0.5 * product_arr)
+            return norm_const * result
+        else:
+            raise ValueError("Cov matrix determinant cannot equal zero")
 
     @staticmethod
     def log_likelihood(mu: np.ndarray, cov: np.ndarray, X: np.ndarray) -> float:
@@ -217,10 +228,40 @@ class MultivariateGaussian:
         log_likelihood: float
             log-likelihood calculated
         """
+        """
+        sample_amount = X.size
+        dim = X[0].size
+        inverted_cov = inv(cov)
+
+        sum_of_normal_exp_power = 0
+
+        for i in range(sample_amount):
+            sum_of_normal_exp_power = sum_of_normal_exp_power - 0.5 * np.multiply((X - mu).transpose(), inverted_cov,
+                                                                                  (X - mu))
+            return sample_amount * math.log(
+                1.0 / math.sqrt(np.linalg.det(cov) * (2 * math.pi) ** dim)) + sum_of_normal_exp_power
         raise NotImplementedError()
+"""
+        size = mu.size
+        sample_amount = X.size
+        deter = det(cov)
+        if deter != 0:
+            norm_const = sample_amount * math.log(
+                1.0 / (math.pow((2 * math.pi), float(size) / 2) * math.pow(deter, 1.0 / 2)), math.e)
+            x_mu = (X - mu)
+            inverse = inv(cov)
+            product_arr = np.einsum('ij,jk,ki->i', x_mu, inverse, x_mu.T)
+
+            exp_power_arr = -0.5 * product_arr
+
+            sum_exp_power = np.sum(exp_power_arr)
+            return norm_const + sum_exp_power
+        else:
+            raise ValueError("Cov matrix determinant cannot equal zero")
 
 
 if __name__ == '__main__':
+    """
     normal1 = UnivariateGaussian();
     print(str(normal1.mu_) + " " + str(normal1.var_))
     numpyArr = np.random.normal(10, 1, 1000)
@@ -248,22 +289,51 @@ if __name__ == '__main__':
         layout=go.Layout(
             title=r"$" + "\\text{Density Function of a normal distribution: }" + "\mu=" + "{:.2f}".format(
                 normal1.mu_) + ", \sigma^2=" + "{:.2f}".format(normal1.var_) + "$",
-            xaxis_title="$X$",
+            xaxis_title="$Value of Samples$",
             yaxis_title="r$\\text{Probability Density}$",
             height=400)).show()
-"""
-    X = np.linspace(6, 14, numpyArr.size).astype(np.int)
-    theoretical_dist_m = UnivariateGaussian.general_pdf(X)
+    print(normal1.log_likelihood(10, 1, numpyArr))
 
-    go.Figure([go.Histogram(x=numpyArr, opacity=0.75, bingroup=1, histnorm='probability density',
-                            marker_color="rgb(0,124,134)", name=r'$\hat\mu$'),
+    """
+    mu_multivariate = np.array([0, 0, 4, 0])
+    cov_multivariate = np.array([[1, 0.2, 0, 0.5], [0.2, 2, 0, 0], [0, 0, 1, 0], [0.5, 0, 0, 1]])
+    # print(cov_multivariate)
+    multivariate_samples = np.random.multivariate_normal(mu_multivariate, cov_multivariate, 1000)
+    # print(multivariate_samples)
+    # multivariate_gaussian = MultivariateGaussian()
+    # multivariate_gaussian.fit(multivariate_samples)
+    # print(multivariate_gaussian.mu_)
+    # print("")
+    # print(multivariate_gaussian.cov_)
+    # print(multivariate_samples[0])
+    # print(multivariate_gaussian.cov_)
+    # print(multivariate_gaussian.pdf(multivariate_samples[0]))
+    # multi = scipy.stats.multivariate_normal(multivariate_gaussian.mu_,
+    # multivariate_gaussian.cov_)
+    # print(multi.pdf(multivariate_samples[0]))
+    multi = MultivariateGaussian()
+    multi.mu_ = np.array([0, 0, 4, 0])
+    multi.cov_ = np.array([[1, 0.2, 0, 0.5], [0.2, 2, 0, 0], [0, 0, 1, 0], [0.5, 0, 0, 1]])
+    # check = np.tile([0,0,4,0],(1000,1))
 
-               go.Scatter(x=X, y=theoretical_dist_m, mode='lines', line=dict(width=4, color="rgb(204,68,83)"),
-                          name=r'$N(\mu, \frac{\sigma^2}{m1})$')],
-              layout=go.Layout(barmode='overlay',
-                               title=r"$\text{(8) Mean estimator distribution}$",
-                               xaxis_title="r$\hat\mu$",
-                               yaxis_title="density",
-                               height=300)).show()
+    multi.fitted_ = True
+    multi_scipy = scipy.stats.multivariate_normal(multi.mu_, multi.cov_)
+    #print(MultivariateGaussian.log_likelihood(mu_multivariate, cov_multivariate, multivariate_samples))
+    #print(multi.pdf(multivariate_samples))
+    """
+    ls = np.linspace(-10, 10, 200)
+    arr = np.zeros((200,200))
+    for i in range(200):
+        counter = 0
+        for j in range(50):
 
-"""
+            arr[i][counter] = ls[i]
+            arr[i][counter+2] = ls[j]
+            counter = counter+4
+    print(arr)
+    """
+    test1 = np.array([[1,2,3,4],[1,2,3,4],[4,5,6,7]])
+    test2 = np.array([[4,5,6,7],[1,2,3,4],[1,2,3,4]])
+    print(np.sum(test1*test2))
+
+
