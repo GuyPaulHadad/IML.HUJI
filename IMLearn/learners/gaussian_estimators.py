@@ -6,7 +6,7 @@ import numpy as np
 import scipy
 from numpy.linalg import inv, det, slogdet
 from scipy.stats import *
-
+import plotly
 import plotly.express as px
 from plotly import graph_objects as go
 
@@ -202,8 +202,6 @@ class MultivariateGaussian:
             x_mu = (X - self.mu_)
             inverse = inv(self.cov_)
             product_arr = np.einsum('ij,jk,ki->i', x_mu, inverse, x_mu.T)
-            print(product_arr)
-            print(np.dot(x_mu,inverse*x_mu.T))
             result = np.exp(-0.5 * product_arr)
             return norm_const * result
         else:
@@ -250,11 +248,7 @@ class MultivariateGaussian:
                 1.0 / (math.pow((2 * math.pi), float(size) / 2) * math.pow(deter, 1.0 / 2)), math.e)
             x_mu = (X - mu)
             inverse = inv(cov)
-            product_arr = np.einsum('ij,jk,ki->i', x_mu, inverse, x_mu.T)
-
-            exp_power_arr = -0.5 * product_arr
-
-            sum_exp_power = np.sum(exp_power_arr)
+            sum_exp_power = -0.5 * np.einsum('ij,jk,ki', x_mu, inverse, x_mu.T)
             return norm_const + sum_exp_power
         else:
             raise ValueError("Cov matrix determinant cannot equal zero")
@@ -312,14 +306,14 @@ if __name__ == '__main__':
     # multivariate_gaussian.cov_)
     # print(multi.pdf(multivariate_samples[0]))
     multi = MultivariateGaussian()
-    multi.mu_ = np.array([0, 0, 4, 0])
-    multi.cov_ = np.array([[1, 0.2, 0, 0.5], [0.2, 2, 0, 0], [0, 0, 1, 0], [0.5, 0, 0, 1]])
+    # multi.mu_ = np.array([0, 0, 4, 0])
+    # multi.cov_ = np.array([[1, 0.2, 0, 0.5], [0.2, 2, 0, 0], [0, 0, 1, 0], [0.5, 0, 0, 1]])
+    multi.fit(multivariate_samples)
     # check = np.tile([0,0,4,0],(1000,1))
 
-    multi.fitted_ = True
-    multi_scipy = scipy.stats.multivariate_normal(multi.mu_, multi.cov_)
-    #print(MultivariateGaussian.log_likelihood(mu_multivariate, cov_multivariate, multivariate_samples))
-    #print(multi.pdf(multivariate_samples))
+    # multi.fitted_ = True
+
+    # print(multivariate_normal.pdf(multivariate_samples,multi.mu_,multi.cov_)-multi.pdf(multivariate_samples))
     """
     ls = np.linspace(-10, 10, 200)
     arr = np.zeros((200,200))
@@ -332,8 +326,29 @@ if __name__ == '__main__':
             counter = counter+4
     print(arr)
     """
-    test1 = np.array([[1,2,3,4],[1,2,3,4],[4,5,6,7]])
-    test2 = np.array([[4,5,6,7],[1,2,3,4],[1,2,3,4]])
-    print(np.sum(test1*test2))
+    # test1 = np.array([[1,2,3,4],[1,2,3,4],[4,5,6,7]])
+    # test2 = np.array([[4,5,6,7],[1,2,3,4],[1,2,3,4]])
+    # print(np.sum(test1*test2))
+    multi_scipy = multivariate_normal(multi.mu_, multi.cov_)
+    f1 = f3 = np.linspace(-10, 10, 200)
 
+    likelihood_arr = np.zeros((200, 200))
+    max_mu = np.array([0, 0, 0, 0])
+    max_likelihood_value = multi.log_likelihood(max_mu, cov_multivariate, multivariate_samples)
 
+    for i in range(200):
+        for j in range(200):
+            cur_mu = np.array([f1[i], 0, f3[j], 0])
+            likelihood_value = multi.log_likelihood(cur_mu, multi.cov_, multivariate_samples)
+            likelihood_arr[i][j] = likelihood_value
+            if max_likelihood_value < likelihood_value:
+                max_mu = cur_mu
+                max_likelihood_value = likelihood_value
+
+    print(max_likelihood_value)
+    print(max_mu)
+    fig3 = px.imshow(likelihood_arr, x=f1, y=f3, title="Log - likelihood pertaining different expectation values",
+                     height=450,
+                     labels=dict(x="Value of F1", y="Value of F3", color="Log - Likelihood Value"),
+                     color_continuous_scale="Hot")
+    plotly.offline.plot(fig3)
