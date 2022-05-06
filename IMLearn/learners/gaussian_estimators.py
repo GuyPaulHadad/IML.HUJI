@@ -63,7 +63,11 @@ class UnivariateGaussian:
         """
 
         self.mu_ = np.mean(X)
-        self.var_ = np.var(X)
+        if self.biased_ is True:
+            self.var_ = X.var(ddof=1)
+        else:
+            self.var_ = np.var(X)
+
         self.fitted_ = True
         return self
 
@@ -226,20 +230,7 @@ class MultivariateGaussian:
         log_likelihood: float
             log-likelihood calculated
         """
-        """
-        sample_amount = X.size
-        dim = X[0].size
-        inverted_cov = inv(cov)
 
-        sum_of_normal_exp_power = 0
-
-        for i in range(sample_amount):
-            sum_of_normal_exp_power = sum_of_normal_exp_power - 0.5 * np.multiply((X - mu).transpose(), inverted_cov,
-                                                                                  (X - mu))
-            return sample_amount * math.log(
-                1.0 / math.sqrt(np.linalg.det(cov) * (2 * math.pi) ** dim)) + sum_of_normal_exp_power
-        raise NotImplementedError()
-"""
         size = mu.size
         sample_amount = X.size
         deter = det(cov)
@@ -248,9 +239,13 @@ class MultivariateGaussian:
                 1.0 / (math.pow((2 * math.pi), float(size) / 2) * math.pow(deter, 1.0 / 2)), math.e)
             x_mu = (X - mu)
             inverse = inv(cov)
-            sum_exp_power = -0.5 * np.einsum('ij,jk,ki', x_mu, inverse, x_mu.T)
+            if x_mu.ndim == 1:
+                sum_exp_power = -0.5 * np.einsum('j,jk,k', x_mu, inverse, x_mu.T)
+            else:
+                sum_exp_power = -0.5 * np.einsum('ij,jk,ki', x_mu, inverse, x_mu.T)
             return norm_const + sum_exp_power
         else:
             raise ValueError("Cov matrix determinant cannot equal zero")
+
 
 

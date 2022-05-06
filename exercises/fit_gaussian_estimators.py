@@ -4,20 +4,18 @@ import plotly.graph_objects as go
 import plotly.io as pio
 import plotly
 import plotly.express as px
-pio.templates.default = "simple_white"
 
+pio.templates.default = "simple_white"
 
 
 def test_univariate_gaussian():
     # Question 1 - Draw samples and print fitted model
     np.random.seed(0)
-    normal1 = UnivariateGaussian();
+    normal1 = UnivariateGaussian()
     numpy_normal_samples = np.random.normal(10, 1, 1000)
     normal1.fit(numpy_normal_samples)
-    print("("+str(normal1.mu_)+","+str(normal1.var_)+")")
-    #print("Estimated mu: " + str(normal1.mu_) + " | Estimated var: " + str(normal1.var_))
-
-
+    print("(" + str(normal1.mu_) + "," + str(normal1.var_) + ")")
+    # print("Estimated mu: " + str(normal1.mu_) + " | Estimated var: " + str(normal1.var_))
 
     # Question 2 - Empirically showing sample mean is consistent
     ms = np.linspace(5, numpy_normal_samples.size, round(numpy_normal_samples.size / 5)).astype(np.int)
@@ -32,7 +30,6 @@ def test_univariate_gaussian():
                                yaxis_title="r$\\text{Absolute Mean Error}$",
                                height=400)).show()
 
-
     # Question 3 - Plotting Empirical PDF of fitted model
     pdf_array = normal1.pdf(numpy_normal_samples)
     go.Figure(
@@ -43,7 +40,6 @@ def test_univariate_gaussian():
             xaxis_title="$Value of Samples$",
             yaxis_title="r$\\text{Probability Density}$",
             height=400)).show()
-    print(normal1.log_likelihood(10, 1, numpy_normal_samples))
 
 
 def test_multivariate_gaussian():
@@ -60,7 +56,6 @@ def test_multivariate_gaussian():
     f1 = f3 = np.linspace(-10, 10, 200)
 
     likelihood_arr = np.zeros((200, 200))
-    max_likelihood_value = -100000000
 
     for i in range(200):
         for j in range(200):
@@ -74,18 +69,14 @@ def test_multivariate_gaussian():
                      color_continuous_scale="Hot")
     plotly.offline.plot(fig3)
 
-
-
-
-
     # Question 6 - Maximum likelihood
     ans = np.unravel_index(np.argmax(likelihood_arr, axis=None), likelihood_arr.shape)
     print("f1: " + str(f1[ans[0]]))
     print("f3: " + str(f3[ans[1]]))
-    print("Max Likelihood: "+ str(likelihood_arr[ans[0]][ans[1]]))
+    print("Max Likelihood: " + str(likelihood_arr[ans[0]][ans[1]]))
 
 
 if __name__ == '__main__':
-    np.random.seed(0)
-    test_univariate_gaussian()
+
+    ##test_univariate_gaussian()
     test_multivariate_gaussian()
