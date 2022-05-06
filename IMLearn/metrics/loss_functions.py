@@ -1,5 +1,6 @@
 import numpy as np
-
+import math
+import sklearn.metrics as met
 
 def mean_square_error(y_true: np.ndarray, y_pred: np.ndarray) -> float:
     """
@@ -16,7 +17,8 @@ def mean_square_error(y_true: np.ndarray, y_pred: np.ndarray) -> float:
     -------
     MSE of given predictions
     """
-    raise NotImplementedError()
+    err = sum((y_pred - y_true) ** 2)
+    return err / y_true.size
 
 
 def misclassification_error(y_true: np.ndarray, y_pred: np.ndarray, normalize: bool = True) -> float:
@@ -36,7 +38,10 @@ def misclassification_error(y_true: np.ndarray, y_pred: np.ndarray, normalize: b
     -------
     Misclassification of given predictions
     """
-    raise NotImplementedError()
+    wrong_amount = sum(y_true != y_pred)
+    if normalize:
+        wrong_amount = wrong_amount/y_true.size
+    return  wrong_amount
 
 
 def accuracy(y_true: np.ndarray, y_pred: np.ndarray) -> float:
@@ -54,7 +59,7 @@ def accuracy(y_true: np.ndarray, y_pred: np.ndarray) -> float:
     -------
     Accuracy of given predictions
     """
-    raise NotImplementedError()
+    return sum(y_true == y_pred) / y_true.size
 
 
 def cross_entropy(y_true: np.ndarray, y_pred: np.ndarray) -> float:
@@ -73,3 +78,7 @@ def cross_entropy(y_true: np.ndarray, y_pred: np.ndarray) -> float:
     Cross entropy of given predictions
     """
     raise NotImplementedError()
+if __name__ == '__main__':
+    y_true = np.array([279000, 432000, 326000, 333000, 437400, 555950])
+    y_pred = np.array(
+        [199000.37562541, 452589.25533196, 345267.48129011, 345856.57131275, 563867.1347574, 395102.94362135])
